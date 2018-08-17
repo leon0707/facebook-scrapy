@@ -36,20 +36,9 @@ class FacebookSpider(scrapy.Spider):
 
     def device_page(self, response):
         if response.status == 200:
-            facebook_urls = [
-                # 'https://www.facebook.com/leon.feng.8',
-                # 'https://www.facebook.com/profile.php?id=100011001069493',
-                # 'https://www.facebook.com/profile.php?id=100006041015583',
-                # 'https://www.facebook.com/vincenzo.sebastiano.98',
-                # 'https://www.facebook.com/ancaodobleja',
-                # 'https://www.facebook.com/davster3?fref=fr_tab'
-                # 'https://www.facebook.com/savannah.edwards1',
-                # 'https://www.facebook.com/millina.guaitini',
-                # 'https://www.facebook.com/m.holds',
-                'https://www.facebook.com/profile.php?id=589566980',
-                # 'https://www.facebook.com/byungtae.lee.9',
-                # 'https://m.facebook.com/deshen.wang.1'
-                ]
+            facebook_urls = self.settings.get('START_FACEBOOK_URL')
+            if not facebook_urls:
+                raise CloseSpider('Need start url')
             for url in facebook_urls:
                 url = urlparse(url)._replace(
                     netloc=self.facebook_mobile_domain).geturl()

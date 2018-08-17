@@ -18,6 +18,10 @@ LOG_LEVEL = 'INFO'
 FACEBOOK_EMAIL = os.environ.get('FACEBOOK_EMAIL') or ''
 FACEBOOK_PASS = os.environ.get('FACEBOOK_PASS') or ''
 
+START_FACEBOOK_URL = [
+    'https://www.facebook.com/profile.php?id=589566980'
+]
+
 SPIDER_MODULES = ['facebook.spiders']
 NEWSPIDER_MODULE = 'facebook.spiders'
 
