@@ -43,11 +43,13 @@ class FacebookProfile(Item):
     gender = Field(output_processor=TakeFirst())  # string
     interested_in = Field(output_processor=TakeFirst())  # string
     languages = Field()  # list {language, page_url}
-    religion = Field()  # json {religious_type, description, page_url}
-    political = Field()  # json {political_type, description, page_url}
+    # json {religious_type, description, page_url}
+    religion = Field(output_processor=TakeFirst())
+    # json {political_type, description, page_url}
+    political = Field(output_processor=TakeFirst())
 
     # {relationship_status, partner_name, partner_profile_url, time}
-    relationship = Field()
+    relationship = Field(output_processor=TakeFirst())
     family_members = Field()  # list {name, relationship, profile_url}
 
     about = Field()  # string
@@ -55,12 +57,14 @@ class FacebookProfile(Item):
     other_names = Field()  # list { type: '', name: ''}
     fav_quotes = Field(output_processor=TakeFirst())  # string
 
-    life_event = Field()  # list {event_title, post_url}
+    life_events = Field()  # list {event_title, post_url}
 
     # friend_groups = Field()  # list {group_name, group_url}
     # friends = Field()  # list {name, profile_url}
     # number_friends = Field(output_processor=TakeFirst())
     friend_with = Field(output_processor=TakeFirst())
+
+    likes = Field()
 
 
 class Feed(Item):
@@ -74,3 +78,12 @@ class Feed(Item):
     links = Field()
     headline = Field(output_processor=TakeFirst())
     location = Field(output_processor=TakeFirst())  # {location, link}
+
+
+class Page(Item):
+    id = Field(output_processor=TakeFirst())
+    facebook_page_id = Field(output_processor=TakeFirst())
+    type = Field(output_processor=TakeFirst())
+    name = Field(output_processor=TakeFirst())
+    url = Field(output_processor=TakeFirst())
+    external_links = Field()

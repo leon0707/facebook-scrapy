@@ -15,11 +15,33 @@ SEARCH_FRIENDS_DEPTH = 1
 
 LOG_LEVEL = 'INFO'
 
-FACEBOOK_EMAIL = os.environ.get('FACEBOOK_EMAIL') or ''
-FACEBOOK_PASS = os.environ.get('FACEBOOK_PASS') or ''
+FACEBOOK_EMAIL = os.environ.get('FACEBOOK_EMAIL')
+FACEBOOK_PASS = os.environ.get('FACEBOOK_PASS')
 
 START_FACEBOOK_URL = [
-    'https://www.facebook.com/profile.php?id=589566980'
+    # 'https://facebook.com/albert.zhang.562',
+    # 'https://facebook.com/maryxian',
+    # 'https://facebook.com/bethanyzhangdan',
+    # 'https://facebook.com/tatkoon',
+    # 'https://facebook.com/prabuddha.de',
+    # 'https://facebook.com/bruce.weber.357',
+    # 'https://facebook.com/cici.li.9',
+    # 'https://m.facebook.com/iljoo.kim.712'
+    # 'https://www.facebook.com/sara.s.houston',
+    # 'https://www.facebook.com/profile.php?id=589566980',
+    # 'https://www.facebook.com/jacky.maszeyuen'
+    # 'https://www.facebook.com/leon.feng.8',
+    # 'https://www.facebook.com/profile.php?id=100011001069493',
+    # 'https://www.facebook.com/profile.php?id=100006041015583',
+    # 'https://www.facebook.com/vincenzo.sebastiano.98',
+    # 'https://www.facebook.com/ancaodobleja',
+    # 'https://www.facebook.com/davster3?fref=fr_tab'
+    # 'https://www.facebook.com/savannah.edwards1',
+    'https://www.facebook.com/andreea.stanica.50',
+    # 'https://www.facebook.com/millina.guaitini',
+    # 'https://www.facebook.com/m.holds',
+    # 'https://www.facebook.com/byungtae.lee.9',
+    # 'https://m.facebook.com/deshen.wang.1'
 ]
 
 SPIDER_MODULES = ['facebook.spiders']
@@ -40,7 +62,9 @@ SQLITE_CONNECTION_STRING = 'sqlite:///temp_data.db'
 
 RETRY_HTTP_CODES = [502, 503, 504, 400, 408]
 
-LOGSTATS_INTERVAL = 10
+# LOGSTATS_INTERVAL = 10
+
+DOWNLOAD_DELAY = 0.5
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
 

@@ -3,7 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Integer, String, DateTime, Text)
 # from sqlalchemy.types import JSON
-from sqlalchemy.orm import backref, relationship, sessionmaker
+from sqlalchemy.orm import backref, relationship as dbrelationship, \
+    sessionmaker
 from scrapy.utils.project import get_project_settings
 
 DeclarativeBase = declarative_base()
@@ -49,6 +50,14 @@ friends_list_table = Table(
            primary_key=True)
 )
 
+likes_list_table = Table(
+    'likes_list', DeclarativeBase.metadata,
+    Column('user_id', Integer, ForeignKey('facebook_users.id'),
+           primary_key=True),
+    Column('page_id', Integer, ForeignKey('pages.id'),
+           primary_key=True)
+)
+
 
 class FacebookUser(DeclarativeBase):
     __tablename__ = 'facebook_users'
@@ -67,18 +76,27 @@ class FacebookUser(DeclarativeBase):
     hometown = Column('hometown', Text())
     places_lived = Column('places_lived', Text())
     fav_quotes = Column('fav_quotes', Text())
-    websites = Column('fav_quotes', Text())
+    websites = Column('websites', Text())
     mobile_numbers = Column('mobile_numbers', Text())
     birth_date = Column('birth_date', Text())
     interested_in = Column('interested_in', String(16))
+    languages = Column('languages', Text())
+    religion = Column('religion', Text())
+    political = Column('political', Text())
     gender = Column('gender', String(16))
-    timeline = relationship('Feed', backref='poster', lazy='dynamic')
-    friends = relationship(
+    relationship = Column('relationship', Text())
+    life_events = Column('life_events', Text())
+    timeline = dbrelationship('Feed', backref='poster', lazy='dynamic')
+    friends = dbrelationship(
         'FacebookUser',
         secondary=friends_list_table,
         primaryjoin=id == friends_list_table.c.user_id,
         secondaryjoin=id == friends_list_table.c.friend_with_id,
-        backref=backref('friend', lazy='joined'))
+        backref=backref('friend_of', lazy='joined'))
+    likes = dbrelationship(
+        'Page',
+        secondary=likes_list_table,
+        backref=backref('liked_users', lazy='joined'))
 
     def __repr__(self):
         return '<FacebookUser: %r, name: %r, profile_url: %r>' \
@@ -101,3 +119,13 @@ class Feed(DeclarativeBase):
     links = Column('links', Text())
     location = Column('location', Text())
     feed_url = Column('feed_url', Text(), nullable=False, unique=True)
+
+
+class Page(DeclarativeBase):
+    __tablename__ = 'pages'
+    id = Column(Integer, primary_key=True, index=True)
+    facebook_page_id = Column('facebook_page_id', Text(), index=True)
+    type = Column('type', String(16))
+    name = Column('name', Text())
+    page_url = Column('page_url', Text())
+    # external_links = Column('external_links', Text())

@@ -1,7 +1,8 @@
 import json
 from sqlalchemy.orm import sessionmaker
-from facebook.models import FacebookUser, Feed, db_connect, create_table
-from facebook.items import Feed as FeedItem, FacebookProfile
+from facebook.models import FacebookUser, Feed, db_connect, create_table, \
+    Page
+from facebook.items import Feed as FeedItem, FacebookProfile, Page as PageItem
 from dateutil.parser import parse
 from datetime import datetime
 
@@ -17,7 +18,6 @@ class saveToSqlite(object):
         self.session = sessionmaker(bind=engine)()
 
     def process_item(self, item, spider):
-        # print item
         session = self.session
         facebook_user = session.query(FacebookUser).filter(
             FacebookUser.id == item['id']).first()
@@ -42,13 +42,16 @@ class saveToSqlite(object):
                 item.get('mobile_numbers'))
             facebook_user.birth_date = item.get('birth_date')
             facebook_user.interested_in = item.get('interested_in')
+            facebook_user.languages = json.dumps(item.get('languages'))
             facebook_user.gender = item.get('gender')
+            facebook_user.relationship = json.dumps(item.get('relationship'))
+            facebook_user.life_events = json.dumps(item.get('life_events'))
             session.add(facebook_user)
             if item.get('friend_with', None):
                 friend = session.query(FacebookUser).filter(
                     FacebookUser.id == item['friend_with']).first()
                 friend.friends.append(facebook_user)
-                facebook_user.friends.append(friend)
+                # facebook_user.friends.append(friend)
                 session.add(friend)
         elif isinstance(item, FeedItem):
             item.setdefault('headline', '')
@@ -59,19 +62,46 @@ class saveToSqlite(object):
                 post_time = parse(item['post_time'])
             except Exception:
                 post_time = datetime.now()
-            facebook_user.timeline.append(
-                Feed(facebook_user_id=item['user_id'],
-                     facebook_feed_id=item['feed_id'],
-                     content=item['content'],
-                     post_time=post_time,
-                     feed_url=item['feed_url'],
-                     type=item['type'],
-                     headline=item['headline'],
-                     links=json.dumps(item['links']),
-                     location=json.dumps(item['location'])
-                     )
-                )
+            feed = session.query(Feed).filter_by(
+                feed_id=item['feed_id']).first()
+            if not feed:
+                feed = Feed(facebook_user_id=item['user_id'],
+                            facebook_feed_id=item['feed_id'],
+                            content=item['content'],
+                            post_time=post_time,
+                            feed_url=item['feed_url'],
+                            type=item['type'],
+                            headline=item['headline'],
+                            links=json.dumps(item['links']),
+                            location=json.dumps(item['location'])
+                            )
+            else:
+                feed.facebook_user_id = item['user_id']
+                feed.content = item['content']
+                feed.post_time = post_time
+                feed.feed_url = item['feed_url']
+                feed.type = item['type']
+                feed.headline = item['headline']
+                feed.links = json.dumps(item['links'])
+                feed.location = json.dumps(item['location'])
+            facebook_user.timeline.append(feed)
+            session.add(feed)
             session.add(facebook_user)
+        elif isinstance(item, PageItem):
+            page = session.query(Page).filter_by(
+                facebook_page_id=item.get('facebook_page_id')).first()
+            if not page:
+                page = Page(facebook_page_id=item.get('facebook_page_id'),
+                            type=item['type'],
+                            name=item['name'],
+                            page_url=item['url'])
+            else:
+                page.type = item['type']
+                page.name = item['name']
+                page.page_url = item['url']
+            facebook_user.likes.append(page)
+            session.add(facebook_user)
+            session.add(page)
         else:
             print item
             pass

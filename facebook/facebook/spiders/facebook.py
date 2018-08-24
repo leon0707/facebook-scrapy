@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import scrapy
 import json
-# import logging
-# import re
+import re
 from urlparse import urlparse, parse_qs
 from scrapy.http import Request, FormRequest
 from scrapy.exceptions import CloseSpider
 from scrapy.loader import ItemLoader
-from ..items import FacebookProfile, Feed
+from ..items import FacebookProfile, Feed, Page
 from ..models import get_id
 
 
@@ -16,6 +15,12 @@ class FacebookSpider(scrapy.Spider):
     allowed_domains = ['facebook.com']
     facebook_mobile_domain = 'm.facebook.com'
     handle_httpstatus_list = [404, 500]
+
+    degrees = ['PhD', 'Master', 'Ph.D.', 'Bachelor']
+    endyear_pattern = re.compile(r'class of (\d{4})')
+    start_end_pattern = re.compile(
+        r'([a-zA-Z0-9, ]*\d{4}) - ([a-zA-Z0-9, ]*\d{4}|Present)')
+    attended_for = ['College', 'High School']
 
     def start_requests(self):
         return [
@@ -38,7 +43,7 @@ class FacebookSpider(scrapy.Spider):
         if response.status == 200:
             facebook_urls = self.settings.get('START_FACEBOOK_URL')
             if not facebook_urls:
-                raise CloseSpider('Need start url')
+                raise CloseSpider('No start url')
             for url in facebook_urls:
                 url = urlparse(url)._replace(
                     netloc=self.facebook_mobile_domain).geturl()
@@ -75,8 +80,10 @@ class FacebookSpider(scrapy.Spider):
                       meta={
                           'loader': loader,
                           'base_url': base_url,
-                          'search_friends_depth': self.settings.get(
-                              'SEARCH_FRIENDS_DEPTH', 1),
+                          'search_friends_depth': response.meta.get(
+                              'search_friends_depth',
+                              self.settings.get(
+                                'SEARCH_FRIENDS_DEPTH', 1)),
                           'id': id,
                           'friend_with': response.meta.get('friend_with', None)
                           }
@@ -93,50 +100,62 @@ class FacebookSpider(scrapy.Spider):
             query_include_id = parse_qs(
                 urlparse(
                     response.xpath(
-                        '(//img[@alt="' + name + '"])[1]/parent::a/@href'
+                        '(//img[@alt="' + name + '"])[1]/ancestor::a/@href'
                         ).extract_first()).query)
-        except Exception:
-            raise CloseSpider('blocked')
+        except Exception as e:
+            print e
+            raise CloseSpider('Cannot find id in: ' + response.url)
         try:
             user_id = query_include_id['id'][0]
         except Exception:
             user_id = query_include_id['profile_id'][0]
         loader.add_value('user_id', user_id)
         # get work
-        for work_selector in response.xpath(
-                '//div[@id="work"]//div[contains(@id, "u_0")]'):
-            work_details = work_selector.xpath(
-                '((.//a)[1]/following-sibling::div)[1]//div')
-            work_dict = dict([
-                ('company', None), ('url', None), ('position', None),
-                ('city', None), ('description', None), ('start', None),
-                ('end', None)])
-            try:
-                work_dict['company'] = work_details[0].xpath(
-                    './/a/text()').extract_first()
-                work_dict['url'] = work_details[0].xpath(
-                    './/a/@href').extract_first()
-            except Exception:
-                pass
-            loader.add_value('works', work_dict)
+        loader.add_value('works', self.extract_work(response.xpath(
+            '//div[@id="work"]//div[contains(@id, "u_0")]')))
+        # for work_selector in response.xpath(
+        #         '//div[@id="work"]//div[contains(@id, "u_0")]'):
+        #     work_details = work_selector.xpath(
+        #         '((.//a)[1]/following-sibling::div)[1]//div')
+        #     work_dict = dict([
+        #         ('company', None), ('url', None), ('position', None),
+        #         ('city', None), ('description', None), ('start', None),
+        #         ('end', None)])
+        #     try:
+        #         work_dict['company'] = work_details[0].xpath(
+        #             './/a/text()').extract_first()
+        #         work_dict['url'] = work_details[0].xpath(
+        #             './/a/@href').extract_first()
+        #     except Exception:
+        #         pass
+        #     loader.add_value('works', work_dict)
 
         # education
-        for edu_selector in response.xpath(
-                '//div[@id="education"]//div[contains(@id, "u_0")]'):
-            edu_details = edu_selector.xpath(
-                '((.//a)[1]/following-sibling::div)[1]//div')
-            edu_dict = dict([
-                ('school', None), ('url', None), ('graduated', None),
-                ('concentrations', []), ('description', None), ('start', None),
-                ('end', None), ('attended_for', None), ('degree', None)])
-            try:
-                edu_dict['school'] = edu_details[0].xpath(
-                    './/a/text()').extract_first()
-                edu_dict['url'] = edu_details[0].xpath(
-                    './/a/@href').extract_first()
-            except Exception:
-                pass
-            loader.add_value('colleges', edu_dict)
+        loader.add_value('colleges', self.extract_edu(response.xpath(
+            '//div[@id="education"]//div[contains(@id, "u_0")]')))
+        # for edu_selector in response.xpath(
+        #         '//div[@id="education"]//div[contains(@id, "u_0")]'):
+        #     edu_details = edu_selector.xpath(
+        #         '((.//a)[1]/following-sibling::div)[1]//div')
+        #     edu_dict = dict([
+        #         ('school', None), ('url', None), ('graduated', None),
+        #         ('concentrations', []), ('description', None), ('start', None),
+        #         ('end', None), ('attended_for', None), ('degree', None)])
+        #     try:
+        #         edu_dict['school'] = edu_details[0].xpath(
+        #             './/a/text()').extract_first()
+        #         edu_dict['url'] = edu_details[0].xpath(
+        #             './/a/@href').extract_first()
+        #         # for i in range(1, len(edu_details)):
+        #         #     text = edu_details[i].xpath(
+        #         #         './/span/text()').extract_first()
+        #         #     if self.find_match(self.degrees, text):
+        #         #         edu_dict['degree'] = text
+        #         #     elif self.find_match(self.degrees, text):
+        #         #         pass
+        #     except Exception:
+        #         pass
+        #     loader.add_value('colleges', edu_dict)
 
         # current_city
         living_div_select = response.xpath('(//div[@id="living"]/div/div)[2]')
@@ -177,6 +196,7 @@ class FacebookSpider(scrapy.Spider):
             response.xpath(
                 '(//div[@id="contact-info"]//div[@title="Mobile"]//td)'
                 '[2]//span[@dir]/text()').extract())
+        # basic info
         loader.add_value(
             'birth_date',
             response.xpath(
@@ -192,8 +212,80 @@ class FacebookSpider(scrapy.Spider):
             response.xpath(
                 '(//div[@id="basic-info"]//div[@title="Interested In"]//td)'
                 '[2]/div/text()').extract_first())
-        # return loader.load_item()
-        # return loader.load_item()
+        loader.add_value(
+            'languages',
+            filter(
+                None,
+                re.split(
+                    ', | and| language',
+                    response.xpath(
+                        'string((//div[@id="basic-info"]//div'
+                        '[@title="Languages"]//td)[2])').extract_first())))
+        loader.add_value(
+            'religion',
+            {
+                'religious_type': response.xpath(
+                    'string((//div[@id="basic-info"]//div'
+                    '[@title="Religious Views"]//td)[2])').extract_first(),
+                'page_url': response.xpath(
+                    '(//div[@id="basic-info"]//div[@title="Religious Views"]'
+                    '//td)[2]//a/@href').extract_first()
+            })
+        loader.add_value(
+            'political',
+            {
+                'political_type': response.xpath(
+                    'string((//div[@id="basic-info"]//div'
+                    '[@title="Political Views"]//td)[2])').extract_first(),
+                'page_url': response.xpath(
+                    '(//div[@id="basic-info"]//div[@title="Political Views"]'
+                    '//td)[2]//a/@href').extract_first()
+            })
+        # nickname
+        for nickname_selector in response.xpath(
+                '//div[@id="nicknames"]//div[@title]'):
+            loader.add_value(
+                'other_names',
+                {
+                    'type': nickname_selector.xpath(
+                        'string((.//td)[1])').extract_first(),
+                    'name': nickname_selector.xpath(
+                        'string((.//td)[2])').extract_first()
+                })
+        # relationship
+        loader.add_value(
+            'relationship',
+            {
+                'text': response.xpath('string((//div[@id="relationship"]'
+                                       '/div/div)[2])').extract_first(),
+                'link': response.xpath('(//div[@id="relationship"]/div/div)'
+                                       '[2]//a/@href').extract_first()
+            })
+        # family
+        for member_selector in response.xpath(
+                '(//div[@id="family"]/div/div)[2]/div/div[1]'):
+            loader.add_value(
+                'family_members',
+                {
+                    'name': member_selector.xpath(
+                        'string((.//h3)[1])').extract_first(),
+                    'relationship': member_selector.xpath(
+                        '(.//h3)[2]/text()').extract_first(),
+                    'link': member_selector.xpath('.//a/@href').extract_first()
+                }
+            )
+
+        # life event
+        for event_selector in response.xpath('//div[@id="year-overviews"]//a'):
+            loader.add_value(
+                'life_events',
+                {
+                    'headline': event_selector.xpath(
+                        './text()').extract_first(),
+                    'link': event_selector.xpath(
+                        './@href').extract_first()
+                }
+            )
         # response.xpath(
         #     '//span[text()="Works at "]'
         #     ).extract()
@@ -205,17 +297,6 @@ class FacebookSpider(scrapy.Spider):
         #     # user may not have a username, use user id
         #     pass
         # try:
-        #     friends_url = response.xpath(
-        #         '//a[text()="Friends"]/@href').extract()[0]
-        # except Exception:
-        #     # add v=friends
-        #     pass
-        # try:
-        #     photos_url = response.xpath(
-        #         '//a[text()="Photos"]/@href').extract()[0]
-        # except Exception:
-        #     pass
-        # try:
         #     likes_url = response.xpath(
         #         '//a[text()="Likes"]/@href').extract()[0]
         # except Exception:
@@ -225,34 +306,41 @@ class FacebookSpider(scrapy.Spider):
         #         '//a[text()="Following"]/@href').extract()[0]
         # except Exception:
         # parse quotes
-        loader.add_value(
-            'fav_quotes',
-            response.xpath(
-                'string((//div[@id="quote"]/div/div)[2]/div)').extract_first())
-        # parse friends page
-        if response.meta['search_friends_depth']:
-            yield Request(response.meta['base_url'] + 'v=friends',
-                          callback=self.parse_friends_page,
-                          meta={
-                              'loader': loader,
-                              'base_url': response.meta['base_url'],
-                              'search_friends_depth':
-                              response.meta['search_friends_depth'] - 1,
-                              'friend_with': response.meta['id']
-                              }
-                          )
-        else:
-            loader.add_value('friend_with',
-                             response.meta.get('friend_with', None))
-        # parse timeline
-        yield Request(response.meta['base_url'] + 'v=timeline',
-                      callback=self.parse_timeline,
-                      meta={
-                          'id': response.meta['id'],
-                          'user_id': user_id,
-                          'base_url': response.meta['base_url']
-                          }
-                      )
+        # loader.add_value(
+        #     'fav_quotes',
+        #     response.xpath(
+        #         'string((//div[@id="quote"]/div/div)[2]/div)').extract_first())
+        # # parse friends page
+        # if response.meta['search_friends_depth']:
+        #     yield Request(response.meta['base_url'] + 'v=friends',
+        #                   callback=self.parse_friends_page,
+        #                   meta={
+        #                       'loader': loader,
+        #                       'base_url': response.meta['base_url'],
+        #                       'search_friends_depth':
+        #                       response.meta['search_friends_depth'] - 1,
+        #                       'friend_with': response.meta['id']
+        #                       }
+        #                   )
+        # else:
+        #     loader.add_value('friend_with',
+        #                      response.meta.get('friend_with', None))
+        # # parse timeline
+        # yield Request(response.meta['base_url'] + 'v=timeline',
+        #               callback=self.parse_timeline,
+        #               meta={
+        #                   'id': response.meta['id'],
+        #                   'user_id': user_id,
+        #                   'base_url': response.meta['base_url']
+        #                   }
+        #               )
+        # # parse likes
+        # yield Request(response.meta['base_url'] + 'v=likes',
+        #               callback=self.parse_likes,
+        #               meta={
+        #                   'id': response.meta['id']
+        #                   }
+        #               )
         yield loader.load_item()
 
     def parse_friends_page(self, response):
@@ -286,6 +374,10 @@ class FacebookSpider(scrapy.Spider):
 
     def parse_timeline(self, response):
         # extract feed
+        # self.extract_feed(
+        #     response.xpath('//div[@id="structured_composer_async_container"]'
+        #                    '//div[@role="article" and @data-ft]'),
+        #     response.meta['user_id'])
         for feed in response.xpath('//div[@role="article" '
                                    'and @data-ft]/@data-ft').extract():
             try:
@@ -365,3 +457,158 @@ class FacebookSpider(scrapy.Spider):
             return loader.load_item()
         else:
             pass
+
+    def parse_likes(self, response):
+        # print response.meta.get('type')
+        like_types_selectors = response.xpath(
+            '//div[@id="root"]/div/div')
+        for like_type_selector in like_types_selectors:
+            if response.meta.get('type', False):
+                type = response.meta['type']
+                if not like_type_selector.xpath(
+                        './/*[(self::h3 or self::h4)]/text()').extract_first():
+                    # filter the redundent div
+                    continue
+            else:
+                # first time crawl likes page
+                type = like_type_selector.xpath(
+                    './/*[(self::h3 or self::h4)]/text()').extract_first()
+            if type:
+                type = type.strip()
+                for page_selector in like_type_selector.xpath(
+                        './/img'):
+                    loader = ItemLoader(item=Page(), response=response)
+                    loader.add_value('id', response.meta['id'])
+                    loader.add_value('type', type)
+                    loader.add_value(
+                        'url',
+                        page_selector.xpath(
+                            '((./following-sibling::div)'
+                            '[1]//a)[1]/@href').extract_first())
+                    loader.add_value(
+                        'name',
+                        page_selector.xpath(
+                            '((./following-sibling::div)'
+                            '[1]//a)[1]//span/text()').extract_first())
+                    # print page_selector.xpath(
+                    #     '((./following-sibling::div)'
+                    #     '[1]//a)[1]//span/text()').extract_first()
+                    # extract page id
+                    try:
+                        loader.add_value(
+                            'facebook_page_id',
+                            parse_qs(
+                                urlparse(
+                                    page_selector.xpath(
+                                        '(./following-sibling::div)[1]//a'
+                                        '[text()="Like"]/@href').extract_first()).query)['id'][0])
+                    except Exception:
+                        # cannot find like button
+                        try:
+                            loader.add_value(
+                                'facebook_page_id',
+                                page_selector.xpath(
+                                    './parent::div/parent::div[@id]/@id').extract_first().split(':')[-1])
+                        except Exception:
+                            print 'Cannot find id on ' + response.url
+                            continue
+                    yield loader.load_item()
+                see_more_url = like_type_selector.xpath(
+                    './/span[text()="See More"]'
+                    '/parent::a/@href').extract_first() or \
+                    like_type_selector.xpath(
+                        './/a[text()="See More"]/@href').extract_first()
+                if see_more_url:
+                    yield Request('https://m.facebook.com' + see_more_url,
+                                  callback=self.parse_likes,
+                                  meta={
+                                      'id': response.meta['id'],
+                                      'type': type
+                                      }
+                                  )
+
+    # def extract_feed(self, selectors, user_id):
+    #     for feed_selector in selectors:
+    #         loader = ItemLoader(item=Feed())
+    #         loader.add_value('user_id', user_id)
+    #         feed = feed_selector.xpath('./@data-ft').extract_first()
+    #         try:
+    #             feed_id = json.loads(feed)['top_level_post_id']
+    #         except Exception:
+    #             feed_id = json.loads(feed)['tl_objid']
+    #         try:
+    #             feed_id = int(feed_id)
+    #         except Exception:
+    #             feed_id = int(feed_id.split(':')[1])
+    #         loader.add_value('feed_id', feed_id)
+    #         loader.add_value(
+    #             'content',
+    #             feed_selector.xpath(
+    #                 "string(.//div[@data-ft='{\"tn\":\"*s\"}'])"
+    #                 ).extract_first())
+    #     pass
+
+    def extract_edu(self, selector):
+        edu_list = []
+        for edu_selector in selector:
+            edu_dict = dict([
+                ('school', None), ('url', None), ('graduated', None),
+                ('concentrations', []), ('description', None), ('start', None),
+                ('end', None), ('attended_for', None), ('degree', None)])
+            edu_details = edu_selector.xpath(
+                '((.//a)[1]/following-sibling::div)[1]/div')
+            edu_dict['school'] = edu_details[0].xpath(
+                './/a/text()').extract_first()
+            edu_dict['url'] = edu_details[0].xpath(
+                './/a/@href').extract_first()
+            for i in range(1, len(edu_details)):
+                text = edu_details[i].xpath(
+                    './/span/text()').extract_first()
+                if self.find_match(self.degrees, text):
+                    edu_dict['degree'] = text
+                elif self.find_match(self.endyear_pattern, text):
+                    edu_dict['end'] = self.find_match(
+                        self.endyear_pattern, text).group(1)
+                elif self.find_match(self.start_end_pattern, text):
+                    edu_dict['start'] = self.find_match(
+                        self.start_end_pattern, text).group(1)
+                    edu_dict['end'] = self.find_match(
+                        self.start_end_pattern, text).group(2)
+                elif self.find_match(self.attended_for, text):
+                    edu_dict['attended_for'] = text
+            edu_list.append(edu_dict)
+        return edu_list
+
+    def extract_work(self, selector):
+        work_list = []
+        for work_selector in selector:
+            work_details = work_selector.xpath(
+                '((.//a)[1]/following-sibling::div)[1]/div')
+            work_dict = dict([
+                ('company', None), ('url', None), ('position', None),
+                ('city', None), ('description', None), ('start', None),
+                ('end', None)])
+            work_dict['company'] = work_details[0].xpath(
+                './/a/text()').extract_first()
+            work_dict['url'] = work_details[0].xpath(
+                './/a/@href').extract_first()
+            for i in range(1, len(work_details)):
+                text = work_details[i].xpath(
+                    './/span/text()').extract_first()
+                if self.find_match(self.start_end_pattern, text):
+                    work_dict['start'] = self.find_match(
+                        self.start_end_pattern, text).group(1)
+                    work_dict['end'] = self.find_match(
+                        self.start_end_pattern, text).group(2)
+            work_list.append(work_dict)
+        return work_list
+
+    def find_match(self, match_item, text):
+        if isinstance(match_item, list):
+            return any(string in text for string in match_item)
+        elif isinstance(match_item, re._pattern_type):
+            res = match_item.match(text)
+            if res:
+                return res
+            else:
+                return False
