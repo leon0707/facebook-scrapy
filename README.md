@@ -9,3 +9,12 @@ source venv/bin/activate
 ```
 pip install -r requuirements.txt
 ```
+2. add environment variables
+```
+FACEBOOK_EMAIL=xxxx
+FACEBOOK_PASS=xxxx
+```
+3. start crawler
+```
+scrapy crawl facebook
+```
