@@ -18,7 +18,7 @@ except ImportError:
 
 SELENIUM_DRIVER_NAME = 'firefox'
 SELENIUM_DRIVER_EXECUTABLE_PATH = which('geckodriver')
-SELENIUM_DRIVER_ARGUMENTS = ['--kiosk']
+SELENIUM_DRIVER_ARGUMENTS = ['--headless']
 
 BOT_NAME = 'facebook'
 
