@@ -17,7 +17,7 @@ class FacebookSpider(scrapy.Spider):
     handle_httpstatus_list = [404, 500]
 
     degrees = ['PhD', 'Master', 'Ph.D.', 'Bachelor']
-    endyear_pattern = re.compile(r'class of (\d{4})')
+    endyear_pattern = re.compile(r'Class of (\d{4})')
     start_end_pattern = re.compile(
         r'([a-zA-Z0-9, ]*\d{4}) - ([a-zA-Z0-9, ]*\d{4}|Present)')
     attended_for = ['College', 'High School']
@@ -75,7 +75,7 @@ class FacebookSpider(scrapy.Spider):
         # print loader.get_output_value('profile_url')
         id = get_id(loader.get_output_value('profile_url'))
         loader.add_value('id', id)
-        yield Request(base_url + 'v=info',
+        yield Request(url=base_url + 'v=info',
                       callback=self.parse_about_page,
                       meta={
                           'loader': loader,
@@ -83,13 +83,17 @@ class FacebookSpider(scrapy.Spider):
                           'search_friends_depth': response.meta.get(
                               'search_friends_depth',
                               self.settings.get(
-                                'SEARCH_FRIENDS_DEPTH', 1)),
+                                  'SEARCH_FRIENDS_DEPTH', 1)),
                           'id': id,
-                          'friend_with': response.meta.get('friend_with', None)
+                          'friend_with': response.meta.get(
+                              'friend_with', None),
+                          'enable_selenium': True
                           }
                       )
 
     def parse_about_page(self, response):
+        """Parse about page."""
+
         loader = response.meta['loader']
         name = response.xpath('//title/text()').extract_first()
         if not name:
@@ -111,8 +115,12 @@ class FacebookSpider(scrapy.Spider):
             user_id = query_include_id['profile_id'][0]
         loader.add_value('user_id', user_id)
         # get work
-        loader.add_value('works', self.extract_work(response.xpath(
-            '//div[@id="work"]//div[contains(@id, "u_0")]')))
+        loader.add_value(
+            'works',
+            self.extract_work(
+                response.xpath(
+                    '//div[@id="work"]//div[contains(@id, "u_0")]'),
+                response.meta['driver']))
         # for work_selector in response.xpath(
         #         '//div[@id="work"]//div[contains(@id, "u_0")]'):
         #     work_details = work_selector.xpath(
@@ -131,8 +139,12 @@ class FacebookSpider(scrapy.Spider):
         #     loader.add_value('works', work_dict)
 
         # education
-        loader.add_value('colleges', self.extract_edu(response.xpath(
-            '//div[@id="education"]//div[contains(@id, "u_0")]')))
+        loader.add_value(
+            'colleges',
+            self.extract_edu(
+                response.xpath(
+                    '//div[@id="education"]//div[contains(@id, "u_0")]'),
+                response.meta['driver']))
         # for edu_selector in response.xpath(
         #         '//div[@id="education"]//div[contains(@id, "u_0")]'):
         #     edu_details = edu_selector.xpath(
@@ -156,6 +168,15 @@ class FacebookSpider(scrapy.Spider):
         #     except Exception:
         #         pass
         #     loader.add_value('colleges', edu_dict)
+
+        # skills
+        skills_str = response.xpath(
+            'string((//div[@id="skills"]/div/div)[2])').extract_first()
+        if skills_str:
+            skills = skills_str.split(', ')
+            skills = skills[:-1] + skills[-1].split(' and ')
+            loader.add_value(
+                'professional_skills', skills)
 
         # current_city
         living_div_select = response.xpath('(//div[@id="living"]/div/div)[2]')
@@ -274,6 +295,12 @@ class FacebookSpider(scrapy.Spider):
                     'link': member_selector.xpath('.//a/@href').extract_first()
                 }
             )
+
+        # about
+        loader.add_value(
+            'about',
+            response.xpath(
+                'string((//div[@id="bio"]/div/div)[2])').extract_first())
 
         # life event
         for event_selector in response.xpath('//div[@id="year-overviews"]//a'):
@@ -501,14 +528,16 @@ class FacebookSpider(scrapy.Spider):
                                 urlparse(
                                     page_selector.xpath(
                                         '(./following-sibling::div)[1]//a'
-                                        '[text()="Like"]/@href').extract_first()).query)['id'][0])
+                                        '[text()="Like"]/@href'
+                                        ).extract_first()).query)['id'][0])
                     except Exception:
                         # cannot find like button
                         try:
                             loader.add_value(
                                 'facebook_page_id',
                                 page_selector.xpath(
-                                    './parent::div/parent::div[@id]/@id').extract_first().split(':')[-1])
+                                    './parent::div/parent::div[@id]/@id'
+                                    ).extract_first().split(':')[-1])
                         except Exception:
                             print 'Cannot find id on ' + response.url
                             continue
@@ -548,9 +577,10 @@ class FacebookSpider(scrapy.Spider):
     #                 ).extract_first())
     #     pass
 
-    def extract_edu(self, selector):
+    def extract_edu(self, selector, driver):
+        """Extract edu information."""
         edu_list = []
-        for edu_selector in selector:
+        for counter, edu_selector in enumerate(selector):
             edu_dict = dict([
                 ('school', None), ('url', None), ('graduated', None),
                 ('concentrations', []), ('description', None), ('start', None),
@@ -564,9 +594,9 @@ class FacebookSpider(scrapy.Spider):
             for i in range(1, len(edu_details)):
                 text = edu_details[i].xpath(
                     './/span/text()').extract_first()
-                if self.find_match(self.degrees, text):
-                    edu_dict['degree'] = text
-                elif self.find_match(self.endyear_pattern, text):
+                # if self.find_match(self.degrees, text):
+                #     edu_dict['degree'] = text
+                if self.find_match(self.endyear_pattern, text):
                     edu_dict['end'] = self.find_match(
                         self.endyear_pattern, text).group(1)
                 elif self.find_match(self.start_end_pattern, text):
@@ -574,14 +604,45 @@ class FacebookSpider(scrapy.Spider):
                         self.start_end_pattern, text).group(1)
                     edu_dict['end'] = self.find_match(
                         self.start_end_pattern, text).group(2)
-                elif self.find_match(self.attended_for, text):
-                    edu_dict['attended_for'] = text
+                # elif self.find_match(self.attended_for, text):
+                #     edu_dict['attended_for'] = text
+                # xpath for selenium
+                # either element doesn't have span child or it has a dot span
+                xpath_str = ('((((//div[@id="education"]//div'
+                             '[contains(@id, "u_0")])[{}]//a)[1]'
+                             '/following-sibling::div)[1]/div)'
+                             '[{}]//span[not(child::span) or '
+                             'child::span[@aria-hidden="true"]]').format(
+                    counter + 1, i + 1)
+                # selenium element
+                element = driver.find_elements_by_xpath(xpath_str)[0]
+                if element.value_of_css_property('font-size') == '13px' and \
+                        element.value_of_css_property(
+                            'color') == 'rgb(128, 128, 128)':
+                    # extract concentrations
+                    edu_dict['concentrations'] = element.text.split(u'\xb7')
+                elif element.value_of_css_property(
+                        'color') == 'rgb(75, 79, 86)' and \
+                        element.value_of_css_property('font-size') == '12px':
+                    # extract degree or attended_for
+                    if element.text in self.attended_for:
+                        edu_dict['attended_for'] = element.text
+                    else:
+                        edu_dict['degree'] = element.text
+                        edu_dict['attended_for'] = 'Graduate School'
+                elif element.value_of_css_property(
+                        'color') == 'rgb(29, 33, 41)' and \
+                        element.value_of_css_property('font-size') == '12px':
+                    edu_dict['description'] = element.text
+                if edu_dict['attended_for'] is None:
+                    # fill the attend for
+                    edu_dict['attended_for'] = 'College'
             edu_list.append(edu_dict)
         return edu_list
 
-    def extract_work(self, selector):
+    def extract_work(self, selector, driver):
         work_list = []
-        for work_selector in selector:
+        for counter, work_selector in enumerate(selector):
             work_details = work_selector.xpath(
                 '((.//a)[1]/following-sibling::div)[1]/div')
             work_dict = dict([
@@ -600,6 +661,28 @@ class FacebookSpider(scrapy.Spider):
                         self.start_end_pattern, text).group(1)
                     work_dict['end'] = self.find_match(
                         self.start_end_pattern, text).group(2)
+                # extract city
+                xpath_str = ('((((//div[@id="work"]//div'
+                             '[contains(@id, "u_0")])[{}]//a)[1]'
+                             '/following-sibling::div)[1]/div)'
+                             '[{}]//span[not(child::span) or '
+                             'child::span[@aria-hidden="true"]]').format(
+                    counter + 1, i + 1)
+                # selenium element
+                element = driver.find_elements_by_xpath(xpath_str)[0]
+                if element.value_of_css_property(
+                        'color') == 'rgb(75, 79, 86)' and \
+                        element.value_of_css_property('font-size') == '12px':
+                    work_dict['position'] = element.text
+                elif element.value_of_css_property(
+                        'color') == 'rgb(144, 148, 156)' and \
+                        element.value_of_css_property('font-size') == '12px':
+                    if work_dict['start'] or work_dict['end']:
+                        work_dict['city'] = element.text
+                elif element.value_of_css_property(
+                        'color') == 'rgb(29, 33, 41)' and \
+                        element.value_of_css_property('font-size') == '12px':
+                        work_dict['description'] = element.text
             work_list.append(work_dict)
         return work_list
 
@@ -612,3 +695,10 @@ class FacebookSpider(scrapy.Spider):
                 return res
             else:
                 return False
+
+    # def search_cssRule(self, css, textSelector):
+    #     print textSelector
+    #     for rule in css.cssRules:
+    #         if rule.typeString == 'STYLE_RULE':
+    #             print rule.selectorText.replace('.', '')
+    #             print rule.style

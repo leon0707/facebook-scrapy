@@ -9,6 +9,17 @@
 #     https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://doc.scrapy.org/en/latest/topics/spider-middleware.html
 import os
+try:
+    # python 3
+    from shutil import which
+except ImportError:
+    # python 2
+    from distutils.spawn import find_executable as which
+
+SELENIUM_DRIVER_NAME = 'firefox'
+SELENIUM_DRIVER_EXECUTABLE_PATH = which('geckodriver')
+SELENIUM_DRIVER_ARGUMENTS = ['--kiosk']
+
 BOT_NAME = 'facebook'
 
 SEARCH_FRIENDS_DEPTH = 1
@@ -19,14 +30,14 @@ FACEBOOK_EMAIL = os.environ.get('FACEBOOK_EMAIL')
 FACEBOOK_PASS = os.environ.get('FACEBOOK_PASS')
 
 START_FACEBOOK_URL = [
-    # 'https://facebook.com/albert.zhang.562',
-    # 'https://facebook.com/maryxian',
-    # 'https://facebook.com/bethanyzhangdan',
-    # 'https://facebook.com/tatkoon',
-    # 'https://facebook.com/prabuddha.de',
-    # 'https://facebook.com/bruce.weber.357',
-    # 'https://facebook.com/cici.li.9',
-    # 'https://m.facebook.com/iljoo.kim.712'
+    # 'https://www.facebook.com/albert.zhang.562',
+    # 'https://www.facebook.com/maryxian',
+    # 'https://www.facebook.com/bethanyzhangdan',
+    # 'https://www.facebook.com/tatkoon',
+    # 'https://www.facebook.com/prabuddha.de',
+    # 'https://www.facebook.com/bruce.weber.357',
+    # 'https://www.facebook.com/cici.li.9',
+    # 'https://www.facebook.com/iljoo.kim.712'
     # 'https://www.facebook.com/sara.s.houston',
     # 'https://www.facebook.com/profile.php?id=589566980',
     # 'https://www.facebook.com/jacky.maszeyuen'
@@ -36,8 +47,9 @@ START_FACEBOOK_URL = [
     # 'https://www.facebook.com/vincenzo.sebastiano.98',
     # 'https://www.facebook.com/ancaodobleja',
     # 'https://www.facebook.com/davster3?fref=fr_tab'
-    # 'https://www.facebook.com/savannah.edwards1',
-    'https://www.facebook.com/andreea.stanica.50',
+    'https://www.facebook.com/savannah.edwards1',
+    # 'https://www.facebook.com/andreea.stanica.50',
+    # 'https://www.facebook.com/atest.btest.3745496',
     # 'https://www.facebook.com/millina.guaitini',
     # 'https://www.facebook.com/m.holds',
     # 'https://www.facebook.com/byungtae.lee.9',
@@ -96,9 +108,10 @@ DOWNLOAD_DELAY = 0.5
 
 # Enable or disable downloader middlewares
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'facebook.middlewares.FacebookDownloaderMiddleware': 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+    'facebook.middlewares.selenium.SeleniumMiddleware': 800,
+    # 'facebook.middlewares.FacebookDownloaderMiddleware': 543,
+}
 
 # Enable or disable extensions
 # See https://doc.scrapy.org/en/latest/topics/extensions.html
@@ -110,7 +123,7 @@ DOWNLOAD_DELAY = 0.5
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
    # 'facebook.pipelines.FacebookPipeline': 300,
-   'facebook.pipelines.persistDatabase.saveToSqlite': 300
+   # 'facebook.pipelines.persistDatabase.saveToSqlite': 300
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
