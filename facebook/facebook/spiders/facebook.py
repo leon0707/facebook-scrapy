@@ -2,9 +2,10 @@
 import scrapy
 import json
 import re
+import datetime
 from urlparse import urlparse, parse_qs
 from scrapy.http import Request, FormRequest
-from scrapy.exceptions import CloseSpider
+from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy.loader import ItemLoader
 from ..items import FacebookProfile, Feed, Page
 from ..models import get_id
@@ -29,6 +30,12 @@ class FacebookSpider(scrapy.Spider):
         ]
 
     def login(self, response):
+        facebook_email = self.settings.get('FACEBOOK_EMAIL')
+        password = self.settings.get('FACEBOOK_PASS')
+        if not facebook_email or not password:
+            raise NotConfigured(
+                'FACEBOOK_EMAIL and FACEBOOK_PASS must be set'
+            )
         return FormRequest.from_response(
             response,
             formdata={
@@ -87,13 +94,16 @@ class FacebookSpider(scrapy.Spider):
                           'id': id,
                           'friend_with': response.meta.get(
                               'friend_with', None),
-                          'enable_selenium': True
+                          'enable_selenium': True,
+                          'title': response.xpath(
+                              '//title/text()').extract_first()
                           }
                       )
 
     def parse_about_page(self, response):
         """Parse about page."""
 
+        print 'scrapy url: ' + response.url
         loader = response.meta['loader']
         name = response.xpath('//title/text()').extract_first()
         if not name:
@@ -121,22 +131,6 @@ class FacebookSpider(scrapy.Spider):
                 response.xpath(
                     '//div[@id="work"]//div[contains(@id, "u_0")]'),
                 response.meta['driver']))
-        # for work_selector in response.xpath(
-        #         '//div[@id="work"]//div[contains(@id, "u_0")]'):
-        #     work_details = work_selector.xpath(
-        #         '((.//a)[1]/following-sibling::div)[1]//div')
-        #     work_dict = dict([
-        #         ('company', None), ('url', None), ('position', None),
-        #         ('city', None), ('description', None), ('start', None),
-        #         ('end', None)])
-        #     try:
-        #         work_dict['company'] = work_details[0].xpath(
-        #             './/a/text()').extract_first()
-        #         work_dict['url'] = work_details[0].xpath(
-        #             './/a/@href').extract_first()
-        #     except Exception:
-        #         pass
-        #     loader.add_value('works', work_dict)
 
         # education
         loader.add_value(
@@ -145,29 +139,9 @@ class FacebookSpider(scrapy.Spider):
                 response.xpath(
                     '//div[@id="education"]//div[contains(@id, "u_0")]'),
                 response.meta['driver']))
-        # for edu_selector in response.xpath(
-        #         '//div[@id="education"]//div[contains(@id, "u_0")]'):
-        #     edu_details = edu_selector.xpath(
-        #         '((.//a)[1]/following-sibling::div)[1]//div')
-        #     edu_dict = dict([
-        #         ('school', None), ('url', None), ('graduated', None),
-        #         ('concentrations', []), ('description', None), ('start', None),
-        #         ('end', None), ('attended_for', None), ('degree', None)])
-        #     try:
-        #         edu_dict['school'] = edu_details[0].xpath(
-        #             './/a/text()').extract_first()
-        #         edu_dict['url'] = edu_details[0].xpath(
-        #             './/a/@href').extract_first()
-        #         # for i in range(1, len(edu_details)):
-        #         #     text = edu_details[i].xpath(
-        #         #         './/span/text()').extract_first()
-        #         #     if self.find_match(self.degrees, text):
-        #         #         edu_dict['degree'] = text
-        #         #     elif self.find_match(self.degrees, text):
-        #         #         pass
-        #     except Exception:
-        #         pass
-        #     loader.add_value('colleges', edu_dict)
+
+        response.meta['driver'].quit()
+        print 'quit: ' + name
 
         # skills
         skills_str = response.xpath(
@@ -313,45 +287,27 @@ class FacebookSpider(scrapy.Spider):
                         './@href').extract_first()
                 }
             )
-        # response.xpath(
-        #     '//span[text()="Works at "]'
-        #     ).extract()
-        # yield Request()
-        # try:
-        #     timeline_url = response.xpath(
-        #         '//a[text()="Timeline"]/@href').extract()[0]
-        # except Exception:
-        #     # user may not have a username, use user id
-        #     pass
-        # try:
-        #     likes_url = response.xpath(
-        #         '//a[text()="Likes"]/@href').extract()[0]
-        # except Exception:
-        #     pass
-        # try:
-        #     following_url = response.xpath(
-        #         '//a[text()="Following"]/@href').extract()[0]
-        # except Exception:
+
         # parse quotes
-        # loader.add_value(
-        #     'fav_quotes',
-        #     response.xpath(
-        #         'string((//div[@id="quote"]/div/div)[2]/div)').extract_first())
-        # # parse friends page
-        # if response.meta['search_friends_depth']:
-        #     yield Request(response.meta['base_url'] + 'v=friends',
-        #                   callback=self.parse_friends_page,
-        #                   meta={
-        #                       'loader': loader,
-        #                       'base_url': response.meta['base_url'],
-        #                       'search_friends_depth':
-        #                       response.meta['search_friends_depth'] - 1,
-        #                       'friend_with': response.meta['id']
-        #                       }
-        #                   )
-        # else:
-        #     loader.add_value('friend_with',
-        #                      response.meta.get('friend_with', None))
+        loader.add_value(
+            'fav_quotes',
+            response.xpath(
+                'string((//div[@id="quote"]/div/div)[2]/div)').extract_first())
+        # parse friends page
+        if response.meta['search_friends_depth']:
+            yield Request(response.meta['base_url'] + 'v=friends',
+                          callback=self.parse_friends_page,
+                          meta={
+                              'loader': loader,
+                              'base_url': response.meta['base_url'],
+                              'search_friends_depth':
+                              response.meta['search_friends_depth'] - 1,
+                              'friend_with': response.meta['id']
+                              }
+                          )
+        else:
+            loader.add_value('friend_with',
+                             response.meta.get('friend_with', None))
         # # parse timeline
         # yield Request(response.meta['base_url'] + 'v=timeline',
         #               callback=self.parse_timeline,
@@ -368,6 +324,8 @@ class FacebookSpider(scrapy.Spider):
         #                   'id': response.meta['id']
         #                   }
         #               )
+        loader.add_value('timestamp', datetime.datetime.now())
+        # print loader.load_item()
         yield loader.load_item()
 
     def parse_friends_page(self, response):
@@ -445,10 +403,10 @@ class FacebookSpider(scrapy.Spider):
             loader.add_value('feed_url', response.url)
             loader.add_xpath(
                 'post_time',
-                "//div[starts-with(@data-ft,'{\"tn\":')]//abbr/text()")
+                "//div[starts-with(@data-ft,'{\"tn\":')]/div/abbr/text()")
             loader.add_xpath('content', '//title/text()')
             content = loader.get_output_value('content')
-            if content == 'Photo':
+            if content == 'Photo' or 'Profile Pictures' or 'Cover Photos':
                 # type = 'photo'
                 loader.add_value('type', 'photo')
             else:
@@ -462,9 +420,6 @@ class FacebookSpider(scrapy.Spider):
                     'string((//div[@id="root"]//table'
                     '[@role="presentation"])[1]//h3)').extract_first()
                 if headline:
-                    # headline = headline.strip() + ' ' + response.xpath(
-                    #     '(//div[@id="root"]//table[@role="presentation"])[1]'
-                    #     '//strong/following-sibling::a/text()').extract_first()
                     loader.add_value('headline', headline)
                     loader.add_xpath(
                         'links',
@@ -472,7 +427,7 @@ class FacebookSpider(scrapy.Spider):
                         ')[1]//strong/following-sibling::a/@href')
                     location_selector = response.xpath(
                         "//div[starts-with(@data-ft,'{\"tn\":')]"
-                        "//abbr/following-sibling::a")
+                        "div/abbr/following-sibling::a")
                     if location_selector:
                         loader.add_value('location', {
                             'location': location_selector.xpath(
@@ -480,7 +435,7 @@ class FacebookSpider(scrapy.Spider):
                             'url':
                             location_selector.xpath('./@href').extract_first()
                         })
-            # print loader.load_item()
+            loader.add_value('timestamp', datetime.datetime.now())
             return loader.load_item()
         else:
             pass
@@ -539,8 +494,10 @@ class FacebookSpider(scrapy.Spider):
                                     './parent::div/parent::div[@id]/@id'
                                     ).extract_first().split(':')[-1])
                         except Exception:
+                            # need to process the page to get the id
                             print 'Cannot find id on ' + response.url
                             continue
+                    loader.add_value('timestamp', datetime.datetime.now())
                     yield loader.load_item()
                 see_more_url = like_type_selector.xpath(
                     './/span[text()="See More"]'
@@ -615,7 +572,14 @@ class FacebookSpider(scrapy.Spider):
                              'child::span[@aria-hidden="true"]]').format(
                     counter + 1, i + 1)
                 # selenium element
-                element = driver.find_elements_by_xpath(xpath_str)[0]
+                try:
+                    element = driver.find_elements_by_xpath(xpath_str)[0]
+                except IndexError:
+                    print 'url: ' + driver.current_url
+                    print 'selector: ' + selector.xpath('string(.)').extract_first()
+                    print 'xpath_str: ' + xpath_str
+                    raise CloseSpider()
+                    continue
                 if element.value_of_css_property('font-size') == '13px' and \
                         element.value_of_css_property(
                             'color') == 'rgb(128, 128, 128)':
@@ -669,7 +633,14 @@ class FacebookSpider(scrapy.Spider):
                              'child::span[@aria-hidden="true"]]').format(
                     counter + 1, i + 1)
                 # selenium element
-                element = driver.find_elements_by_xpath(xpath_str)[0]
+                try:
+                    element = driver.find_elements_by_xpath(xpath_str)[0]
+                except IndexError:
+                    print 'url: ' + driver.current_url
+                    print 'selector: ' + selector.xpath('string(.)').extract_first()
+                    print 'xpath_str: ' + xpath_str
+                    raise CloseSpider()
+                    continue
                 if element.value_of_css_property(
                         'color') == 'rgb(75, 79, 86)' and \
                         element.value_of_css_property('font-size') == '12px':

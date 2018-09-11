@@ -52,7 +52,7 @@ class FacebookProfile(Item):
     relationship = Field(output_processor=TakeFirst())
     family_members = Field()  # list {name, relationship, profile_url}
 
-    about = Field()  # string
+    about = Field(output_processor=TakeFirst())  # string
     name_pronunciation = Field()  # mp3 url
     other_names = Field()  # list { type: '', name: ''}
     fav_quotes = Field(output_processor=TakeFirst())  # string
@@ -65,6 +65,8 @@ class FacebookProfile(Item):
     friend_with = Field(output_processor=TakeFirst())
 
     likes = Field()
+
+    timestamp = Field(output_processor=TakeFirst())
 
 
 class Feed(Item):
@@ -79,6 +81,8 @@ class Feed(Item):
     headline = Field(output_processor=TakeFirst())
     location = Field(output_processor=TakeFirst())  # {location, link}
 
+    timestamp = Field(output_processor=TakeFirst())
+
 
 class Page(Item):
     id = Field(output_processor=TakeFirst())
@@ -87,3 +91,5 @@ class Page(Item):
     name = Field(output_processor=TakeFirst())
     url = Field(output_processor=TakeFirst())
     external_links = Field()
+
+    timestamp = Field(output_processor=TakeFirst())

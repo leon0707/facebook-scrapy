@@ -46,6 +46,8 @@ class saveToSqlite(object):
             facebook_user.gender = item.get('gender')
             facebook_user.relationship = json.dumps(item.get('relationship'))
             facebook_user.life_events = json.dumps(item.get('life_events'))
+            facebook_user.about = item.get('about')
+            facebook_user.timestamp = item['timestamp']
             session.add(facebook_user)
             if item.get('friend_with', None):
                 friend = session.query(FacebookUser).filter(
@@ -63,7 +65,7 @@ class saveToSqlite(object):
             except Exception:
                 post_time = datetime.now()
             feed = session.query(Feed).filter_by(
-                feed_id=item['feed_id']).first()
+                facebook_feed_id=item['feed_id']).first()
             if not feed:
                 feed = Feed(facebook_user_id=item['user_id'],
                             facebook_feed_id=item['feed_id'],
@@ -84,6 +86,7 @@ class saveToSqlite(object):
                 feed.headline = item['headline']
                 feed.links = json.dumps(item['links'])
                 feed.location = json.dumps(item['location'])
+                feed.timestamp = item['timestamp']
             facebook_user.timeline.append(feed)
             session.add(feed)
             session.add(facebook_user)
@@ -99,11 +102,11 @@ class saveToSqlite(object):
                 page.type = item['type']
                 page.name = item['name']
                 page.page_url = item['url']
+                page.timestamp = item['timestamp']
             facebook_user.likes.append(page)
             session.add(facebook_user)
             session.add(page)
         else:
-            print item
             pass
         try:
             session.commit()

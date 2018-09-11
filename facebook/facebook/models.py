@@ -6,6 +6,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import backref, relationship as dbrelationship, \
     sessionmaker
 from scrapy.utils.project import get_project_settings
+from datetime import datetime
 
 DeclarativeBase = declarative_base()
 
@@ -86,6 +87,8 @@ class FacebookUser(DeclarativeBase):
     gender = Column('gender', String(16))
     relationship = Column('relationship', Text())
     life_events = Column('life_events', Text())
+    about = Column('life_events', Text())
+    timestamp = Column('timestamp', DateTime(), default=datetime.utcnow)
     timeline = dbrelationship('Feed', backref='poster', lazy='dynamic')
     friends = dbrelationship(
         'FacebookUser',
@@ -119,6 +122,7 @@ class Feed(DeclarativeBase):
     links = Column('links', Text())
     location = Column('location', Text())
     feed_url = Column('feed_url', Text(), nullable=False, unique=True)
+    timestamp = Column('timestamp', DateTime(), default=datetime.utcnow)
 
 
 class Page(DeclarativeBase):
@@ -129,3 +133,4 @@ class Page(DeclarativeBase):
     name = Column('name', Text())
     page_url = Column('page_url', Text())
     # external_links = Column('external_links', Text())
+    timestamp = Column('timestamp', DateTime(), default=datetime.utcnow)

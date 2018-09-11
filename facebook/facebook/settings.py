@@ -18,7 +18,8 @@ except ImportError:
 
 SELENIUM_DRIVER_NAME = 'firefox'
 SELENIUM_DRIVER_EXECUTABLE_PATH = which('geckodriver')
-SELENIUM_DRIVER_ARGUMENTS = ['--headless']
+SELENIUM_DRIVER_ARGUMENTS = ['--kiosk']
+SELENIUM_INIT_URL = 'https://m.facebook.com'
 
 BOT_NAME = 'facebook'
 
@@ -48,6 +49,9 @@ START_FACEBOOK_URL = [
     # 'https://www.facebook.com/ancaodobleja',
     # 'https://www.facebook.com/davster3?fref=fr_tab'
     'https://www.facebook.com/savannah.edwards1',
+    # 'https://www.facebook.com/ben.chun.3',
+    # 'https://www.facebook.com/natalie.criscenzo',
+    # 'https://www.facebook.com/lauren.camp.58',
     # 'https://www.facebook.com/andreea.stanica.50',
     # 'https://www.facebook.com/atest.btest.3745496',
     # 'https://www.facebook.com/millina.guaitini',
@@ -78,7 +82,7 @@ RETRY_HTTP_CODES = [502, 503, 504, 400, 408]
 
 DOWNLOAD_DELAY = 0.5
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 1
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://doc.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -102,15 +106,15 @@ DOWNLOAD_DELAY = 0.5
 
 # Enable or disable spider middlewares
 # See https://doc.scrapy.org/en/latest/topics/spider-middleware.html
-#SPIDER_MIDDLEWARES = {
-#    'facebook.middlewares.FacebookSpiderMiddleware': 543,
-#}
+SPIDER_MIDDLEWARES = {
+   'facebook.middlewares.test.FacebookSpiderMiddleware': 1,
+}
 
 # Enable or disable downloader middlewares
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-    'facebook.middlewares.selenium.SeleniumMiddleware': 800,
-    # 'facebook.middlewares.FacebookDownloaderMiddleware': 543,
+    'facebook.middlewares.seleniumMiddleware.SeleniumMiddleware': 800,
+    'facebook.middlewares.test.FacebookDownloaderMiddleware': 1,
 }
 
 # Enable or disable extensions
@@ -123,7 +127,7 @@ DOWNLOADER_MIDDLEWARES = {
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
    # 'facebook.pipelines.FacebookPipeline': 300,
-   # 'facebook.pipelines.persistDatabase.saveToSqlite': 300
+   'facebook.pipelines.persistDatabase.saveToSqlite': 300
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

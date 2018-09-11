@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# Define here the models for your spider middleware
-#
-# See documentation in:
-# https://doc.scrapy.org/en/latest/topics/spider-middleware.html
-
 from scrapy import signals
 
 
@@ -25,6 +20,7 @@ class FacebookSpiderMiddleware(object):
         # middleware and into the spider.
 
         # Should return None or raise an exception.
+        print 'process_spider_input: ' + str(response)
         return None
 
     def process_spider_output(self, response, result, spider):
@@ -32,7 +28,9 @@ class FacebookSpiderMiddleware(object):
         # it has processed the response.
 
         # Must return an iterable of Request, dict or Item objects.
+        print 'process_spider_output: ' + str(response)
         for i in result:
+            print 'result: ' + str(i)
             yield i
 
     def process_spider_exception(self, response, exception, spider):
@@ -87,8 +85,9 @@ class FacebookDownloaderMiddleware(object):
         # - return a Response object
         # - return a Request object
         # - or raise IgnoreRequest
-        print 'FacebookDownloaderMiddleware request: ' + request.url
-        print 'FacebookDownloaderMiddleware response: ' + response.url
+        if request.meta.get('enable_selenium', False):
+            print 'FacebookDownloaderMiddleware request: ' + request.url
+            print 'FacebookDownloaderMiddleware response: ' + response.url + ', ' + str(response.status)
         return response
 
     def process_exception(self, request, exception, spider):
