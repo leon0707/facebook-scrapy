@@ -92,6 +92,7 @@ class SeleniumMiddleware:
 
     def process_request(self, request, spider):
         """Process a request using the selenium driver if applicable"""
+        # print 'SeleniumMiddleware process_request: request ' + str(request)
         if not request.meta.get('enable_selenium', False):
             return None
 
@@ -111,12 +112,12 @@ class SeleniumMiddleware:
         driver.get(request.url)
 
         # wait til page loads
-        print driver.find_element_by_tag_name(
-            'title').get_attribute(
-                'innerHTML') + ', ' + request.meta['title']
-        print 'compare: ' + str(driver.find_element_by_tag_name(
-            'title').get_attribute(
-                'innerHTML') == request.meta['title'])
+        # print driver.find_element_by_tag_name(
+        #     'title').get_attribute(
+        #         'innerHTML') + ', ' + request.meta['title']
+        # print 'compare: ' + str(driver.find_element_by_tag_name(
+        #     'title').get_attribute(
+        #         'innerHTML') == request.meta['title'])
         # print EC.text_to_be_present_in_element(
         #     (By.TAG_NAME, 'title'), request.meta['title'])
         try:
@@ -128,13 +129,13 @@ class SeleniumMiddleware:
         except TimeoutException:
             raise IgnoreRequest('Cannot open: ' + request.url)
 
-        print 'waiting ends: ' + request.meta['title']
+        # print 'waiting ends: ' + request.meta['title']
         body = driver.page_source
 
         # Expose the driver via the "meta" attribute
         request.meta.update({'driver': driver})
 
-        print 'send request: ' + request.meta['title']
+        # print 'send response: ' + str(request)
 
         return HtmlResponse(
             request.url,
@@ -144,8 +145,8 @@ class SeleniumMiddleware:
         )
 
     def process_response(self, request, response, spider):
-        if request.meta.get('title', False):
-            print 'response: ' + request.meta.get('title')
+        # print 'SeleniumMiddleware process_response: request ' + str(request)
+        # print 'SeleniumMiddleware process_response: response ' + str(response)
         return response
 
     def spider_closed(self):

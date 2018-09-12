@@ -20,7 +20,7 @@ class FacebookSpiderMiddleware(object):
         # middleware and into the spider.
 
         # Should return None or raise an exception.
-        print 'process_spider_input: ' + str(response)
+        print 'process_spider_input: response ' + str(response)
         return None
 
     def process_spider_output(self, response, result, spider):
@@ -28,9 +28,9 @@ class FacebookSpiderMiddleware(object):
         # it has processed the response.
 
         # Must return an iterable of Request, dict or Item objects.
-        print 'process_spider_output: ' + str(response)
+        print 'process_spider_output: response ' + str(response)
         for i in result:
-            print 'result: ' + str(i)
+            print 'process_spider_output result: ' + str(i)
             yield i
 
     def process_spider_exception(self, response, exception, spider):
@@ -39,6 +39,7 @@ class FacebookSpiderMiddleware(object):
 
         # Should return either None or an iterable of Response, dict
         # or Item objects.
+        print 'process_spider_exception: ' + str(exception)
         pass
 
     def process_start_requests(self, start_requests, spider):
@@ -47,7 +48,9 @@ class FacebookSpiderMiddleware(object):
         # that it doesn’t have a response associated.
 
         # Must return only requests (not items).
+        print 'process_start_requests'
         for r in start_requests:
+            print r
             yield r
 
     def spider_opened(self, spider):
@@ -76,6 +79,7 @@ class FacebookDownloaderMiddleware(object):
         # - or return a Request object
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
+        print 'FacebookDownloaderMiddleware process_request: request ' + str(request)
         return None
 
     def process_response(self, request, response, spider):
@@ -85,9 +89,8 @@ class FacebookDownloaderMiddleware(object):
         # - return a Response object
         # - return a Request object
         # - or raise IgnoreRequest
-        if request.meta.get('enable_selenium', False):
-            print 'FacebookDownloaderMiddleware request: ' + request.url
-            print 'FacebookDownloaderMiddleware response: ' + response.url + ', ' + str(response.status)
+        print 'FacebookDownloaderMiddleware process_response: request ' + str(request)
+        print 'FacebookDownloaderMiddleware process_response: response ' + str(response)
         return response
 
     def process_exception(self, request, exception, spider):
@@ -98,6 +101,7 @@ class FacebookDownloaderMiddleware(object):
         # - return None: continue processing this exception
         # - return a Response object: stops process_exception() chain
         # - return a Request object: stops process_exception() chain
+        print 'process_exception: ' + str(exception)
         pass
 
     def spider_opened(self, spider):

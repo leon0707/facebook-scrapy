@@ -17,7 +17,7 @@ class FacebookSpider(scrapy.Spider):
     facebook_mobile_domain = 'm.facebook.com'
     handle_httpstatus_list = [404, 500]
 
-    degrees = ['PhD', 'Master', 'Ph.D.', 'Bachelor']
+    # degrees = ['PhD', 'Master', 'Ph.D.', 'Bachelor']
     endyear_pattern = re.compile(r'Class of (\d{4})')
     start_end_pattern = re.compile(
         r'([a-zA-Z0-9, ]*\d{4}) - ([a-zA-Z0-9, ]*\d{4}|Present)')
@@ -82,8 +82,10 @@ class FacebookSpider(scrapy.Spider):
         # print loader.get_output_value('profile_url')
         id = get_id(loader.get_output_value('profile_url'))
         loader.add_value('id', id)
+
         yield Request(url=base_url + 'v=info',
                       callback=self.parse_about_page,
+                      priority=1000,
                       meta={
                           'loader': loader,
                           'base_url': base_url,
@@ -103,7 +105,6 @@ class FacebookSpider(scrapy.Spider):
     def parse_about_page(self, response):
         """Parse about page."""
 
-        print 'scrapy url: ' + response.url
         loader = response.meta['loader']
         name = response.xpath('//title/text()').extract_first()
         if not name:
@@ -141,7 +142,6 @@ class FacebookSpider(scrapy.Spider):
                 response.meta['driver']))
 
         response.meta['driver'].quit()
-        print 'quit: ' + name
 
         # skills
         skills_str = response.xpath(
@@ -308,22 +308,22 @@ class FacebookSpider(scrapy.Spider):
         else:
             loader.add_value('friend_with',
                              response.meta.get('friend_with', None))
-        # # parse timeline
-        # yield Request(response.meta['base_url'] + 'v=timeline',
-        #               callback=self.parse_timeline,
-        #               meta={
-        #                   'id': response.meta['id'],
-        #                   'user_id': user_id,
-        #                   'base_url': response.meta['base_url']
-        #                   }
-        #               )
-        # # parse likes
-        # yield Request(response.meta['base_url'] + 'v=likes',
-        #               callback=self.parse_likes,
-        #               meta={
-        #                   'id': response.meta['id']
-        #                   }
-        #               )
+        # parse timeline
+        yield Request(response.meta['base_url'] + 'v=timeline',
+                      callback=self.parse_timeline,
+                      meta={
+                          'id': response.meta['id'],
+                          'user_id': user_id,
+                          'base_url': response.meta['base_url']
+                          }
+                      )
+        # parse likes
+        yield Request(response.meta['base_url'] + 'v=likes',
+                      callback=self.parse_likes,
+                      meta={
+                          'id': response.meta['id']
+                          }
+                      )
         loader.add_value('timestamp', datetime.datetime.now())
         # print loader.load_item()
         yield loader.load_item()
@@ -575,9 +575,9 @@ class FacebookSpider(scrapy.Spider):
                 try:
                     element = driver.find_elements_by_xpath(xpath_str)[0]
                 except IndexError:
-                    print 'url: ' + driver.current_url
-                    print 'selector: ' + selector.xpath('string(.)').extract_first()
-                    print 'xpath_str: ' + xpath_str
+                    # print 'url: ' + driver.current_url
+                    # print 'selector: ' + selector.xpath('string(.)').extract_first()
+                    # print 'xpath_str: ' + xpath_str
                     raise CloseSpider()
                     continue
                 if element.value_of_css_property('font-size') == '13px' and \
@@ -636,9 +636,9 @@ class FacebookSpider(scrapy.Spider):
                 try:
                     element = driver.find_elements_by_xpath(xpath_str)[0]
                 except IndexError:
-                    print 'url: ' + driver.current_url
-                    print 'selector: ' + selector.xpath('string(.)').extract_first()
-                    print 'xpath_str: ' + xpath_str
+                    # print 'url: ' + driver.current_url
+                    # print 'selector: ' + selector.xpath('string(.)').extract_first()
+                    # print 'xpath_str: ' + xpath_str
                     raise CloseSpider()
                     continue
                 if element.value_of_css_property(

@@ -87,7 +87,7 @@ class FacebookUser(DeclarativeBase):
     gender = Column('gender', String(16))
     relationship = Column('relationship', Text())
     life_events = Column('life_events', Text())
-    about = Column('life_events', Text())
+    about = Column('about', Text())
     timestamp = Column('timestamp', DateTime(), default=datetime.utcnow)
     timeline = dbrelationship('Feed', backref='poster', lazy='dynamic')
     friends = dbrelationship(

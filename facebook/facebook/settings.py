@@ -18,7 +18,7 @@ except ImportError:
 
 SELENIUM_DRIVER_NAME = 'firefox'
 SELENIUM_DRIVER_EXECUTABLE_PATH = which('geckodriver')
-SELENIUM_DRIVER_ARGUMENTS = ['--kiosk']
+SELENIUM_DRIVER_ARGUMENTS = ['--headless']
 SELENIUM_INIT_URL = 'https://m.facebook.com'
 
 BOT_NAME = 'facebook'
@@ -31,6 +31,8 @@ FACEBOOK_EMAIL = os.environ.get('FACEBOOK_EMAIL')
 FACEBOOK_PASS = os.environ.get('FACEBOOK_PASS')
 
 START_FACEBOOK_URL = [
+    'https://www.facebook.com/profile.php?id=100004429990971',
+    # 'https://www.facebook.com/leon.feng.8',
     # 'https://www.facebook.com/albert.zhang.562',
     # 'https://www.facebook.com/maryxian',
     # 'https://www.facebook.com/bethanyzhangdan',
@@ -42,18 +44,16 @@ START_FACEBOOK_URL = [
     # 'https://www.facebook.com/sara.s.houston',
     # 'https://www.facebook.com/profile.php?id=589566980',
     # 'https://www.facebook.com/jacky.maszeyuen'
-    # 'https://www.facebook.com/leon.feng.8',
     # 'https://www.facebook.com/profile.php?id=100011001069493',
     # 'https://www.facebook.com/profile.php?id=100006041015583',
     # 'https://www.facebook.com/vincenzo.sebastiano.98',
     # 'https://www.facebook.com/ancaodobleja',
-    # 'https://www.facebook.com/davster3?fref=fr_tab'
-    'https://www.facebook.com/savannah.edwards1',
+    # 'https://www.facebook.com/davster3',
+    # 'https://www.facebook.com/savannah.edwards1',
     # 'https://www.facebook.com/ben.chun.3',
     # 'https://www.facebook.com/natalie.criscenzo',
     # 'https://www.facebook.com/lauren.camp.58',
     # 'https://www.facebook.com/andreea.stanica.50',
-    # 'https://www.facebook.com/atest.btest.3745496',
     # 'https://www.facebook.com/millina.guaitini',
     # 'https://www.facebook.com/m.holds',
     # 'https://www.facebook.com/byungtae.lee.9',
@@ -82,7 +82,7 @@ RETRY_HTTP_CODES = [502, 503, 504, 400, 408]
 
 DOWNLOAD_DELAY = 0.5
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-CONCURRENT_REQUESTS = 1
+# CONCURRENT_REQUESTS = 1
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://doc.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -107,14 +107,14 @@ CONCURRENT_REQUESTS = 1
 # Enable or disable spider middlewares
 # See https://doc.scrapy.org/en/latest/topics/spider-middleware.html
 SPIDER_MIDDLEWARES = {
-   'facebook.middlewares.test.FacebookSpiderMiddleware': 1,
+   # 'facebook.middlewares.test.FacebookSpiderMiddleware': 1,
 }
 
 # Enable or disable downloader middlewares
 # See https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     'facebook.middlewares.seleniumMiddleware.SeleniumMiddleware': 800,
-    'facebook.middlewares.test.FacebookDownloaderMiddleware': 1,
+    # 'facebook.middlewares.test.FacebookDownloaderMiddleware': 1,
 }
 
 # Enable or disable extensions
